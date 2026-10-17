@@ -7,7 +7,7 @@ with no Android SDK and your laptop with one.
 |---|---|---|
 | Pin FUTO Keyboard source as `upstream/` submodule (GitHub mirror, tag `0.1.30`) | cloud | done |
 | Recognizer core: interface, ink model, preprocessing, rasterizer, commit policy, serialization, unit tests | cloud | done, see `recognizer-core/` |
-| Build FUTO unmodified (`assembleUnstableDebug`) | GitHub Actions or the M4 Air | workflow added (`.github/workflows/build-futo.yml`); first run pending. Not possible from the cloud container: Google's SDK host and FUTO's GitLab are unreachable there |
+| Build FUTO unmodified (`assembleUnstableDebug`) | GitHub Actions or the M4 Air | CI green on run #1 (2026-10-17, 12 min), APK artifact available. Not possible from the cloud container: Google's SDK host and FUTO's GitLab are unreachable there |
 | M4 Air toolchain | **your machine** | `tools/mac/bootstrap.sh`, see `docs/MAC_SETUP.md` |
 | Sideload to Pad 7 and run `scripts/phase0-device-check.sh` | **your machine** | pending |
 | Gboard "Write in text fields" check | **your machine** | pending |

@@ -22,9 +22,8 @@ Repo `AIMDaAlien/Handwriting-input-keeb`, work on branch
   gitlab.futo.org and huggingface.co (futo-swipe, LFS).
 - `.github/workflows/build-futo.yml`: job 1 runs recognizer-core tests (passing);
   job 2 builds `upstream` with `assembleUnstableDebug` and uploads
-  `futo-handwriting-unstable-debug-apk`. First run (#1) was mid-build when I handed off:
-  checkout, submodules, LFS, SDK, Python steps all succeeded. Check its result first:
-  `gh run list --workflow build-futo.yml` and `gh run view --log-failed` if red.
+  `futo-handwriting-unstable-debug-apk`. Run #1 is **green** (build took 12 min); the
+  artifact is ready: `gh run download -n futo-handwriting-unstable-debug-apk -D /tmp/apk`.
 - `tools/mac/bootstrap.sh` + `Brewfile`: I ran this and **some steps failed**. First task:
   ask me what failed, or re-run it and read the output, then fix the script so it is
   idempotent and correct, commit, push. Design intent: ONE Android SDK at
