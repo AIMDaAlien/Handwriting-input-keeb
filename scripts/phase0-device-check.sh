@@ -4,6 +4,9 @@
 set -u
 say() { printf '\n== %s\n' "$*"; }
 adb get-state >/dev/null 2>&1 || { echo "no device: enable USB debugging and run 'adb devices'"; exit 1; }
+# A flaky USB link makes later commands print "no devices" and the survey reads as false negatives.
+alive() { adb get-state >/dev/null 2>&1 || { echo "DEVICE LOST mid-survey: results above are incomplete; check cable/port and re-run"; exit 2; }; }
+trap alive DEBUG
 
 say "Build"
 adb shell getprop ro.product.model
