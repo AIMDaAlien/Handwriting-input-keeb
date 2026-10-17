@@ -7,11 +7,21 @@ with no Android SDK and your laptop with one.
 |---|---|---|
 | Pin FUTO Keyboard source as `upstream/` submodule (GitHub mirror, tag `0.1.30`) | cloud | done |
 | Recognizer core: interface, ink model, preprocessing, rasterizer, commit policy, serialization, unit tests | cloud | done, see `recognizer-core/` |
-| Build FUTO unmodified (`assembleUnstableDebug`) | **your machine** | blocked here: Google's SDK host and FUTO's GitLab (submodule host) are unreachable from the cloud container |
+| Build FUTO unmodified (`assembleUnstableDebug`) | GitHub Actions or the M4 Air | workflow added (`.github/workflows/build-futo.yml`); first run pending. Not possible from the cloud container: Google's SDK host and FUTO's GitLab are unreachable there |
+| M4 Air toolchain | **your machine** | `tools/mac/bootstrap.sh`, see `docs/MAC_SETUP.md` |
 | Sideload to Pad 7 and run `scripts/phase0-device-check.sh` | **your machine** | pending |
 | Gboard "Write in text fields" check | **your machine** | pending |
 
-## 1. Build FUTO on your machine
+## 1. Build FUTO
+
+Fastest path: push, wait for the **build** workflow, download the APK artifact from the
+Actions tab onto the tablet, install. Or with the GitHub CLI on the Air:
+
+```bash
+gh run download -n futo-handwriting-unstable-debug-apk -D /tmp/apk && adb install -r /tmp/apk/*.apk
+```
+
+Local path on the Air (after `tools/mac/bootstrap.sh`):
 
 ```bash
 # Android Studio Ladybug or newer, JDK 17+, NDK 28.2 (build.gradle pins it; the SDK manager will fetch it).
