@@ -1,7 +1,8 @@
 # Handwriting input for FUTO Keyboard (Xiaomi Pad 7 + Focus Pen)
 
-> Planning document, 2026-10-17. Nothing here is built yet. This is the design and
-> the order of work. Each phase has a confidence level and the research behind it.
+> Planning document. Research re-verified against live sources on **2026-10-17**.
+> Nothing here is built yet. Each phase has a confidence level and the research
+> behind it. Anything marked *unverified* could not be confirmed from a primary source.
 
 ## 1. What we're building
 
@@ -10,9 +11,9 @@ A **privacy-first stylus handwriting input** that lives inside a personal fork o
 
 | Thing | Value |
 |---|---|
-| Device | Xiaomi Pad 7, HyperOS 2 (Android 15 / API 35) |
+| Device | Xiaomi Pad 7, **HyperOS 3 (Android 16 / API 36)**, stable global rollout Nov 2025, later 2026 builds up to a Sept 2026 patch level. Android 17 (API 37) shipped June 2026; no Pad 7 rollout confirmed. |
 | Pen | Xiaomi Focus Pen (Bluetooth, ~8192 pressure levels) |
-| Base | FUTO Keyboard, `LatinIME.kt`, Kotlin + Jetpack Compose, compileSdk 35, minSdk 24 |
+| Base | FUTO Keyboard **v0.1.30 (Aug 2026)**, `LatinIME.kt`, Kotlin 2.1 + Jetpack Compose, compileSdk 35, minSdk 24. Still no handwriting upstream as of v0.1.30. |
 | Script | Latin / English first (CJK via Zinnia later, see §4) |
 | Hard rule | No ink leaves the device. No network at recognition time. |
 
@@ -112,6 +113,8 @@ Verified from the Android API diffs:
 | 33 | 13 | `onPrepareStylusHandwriting()`, `onStartStylusHandwriting(): Boolean`, `onStylusHandwritingMotionEvent(MotionEvent)`, `onFinishStylusHandwriting()`, `finishStylusHandwriting()`, `getStylusHandwritingWindow()`. IME declares `android:supportsStylusHandwriting="true"` in `method.xml`; `InputMethodInfo.supportsStylusHandwriting()`. |
 | 34 | 14 | `EditText` starts handwriting by default when a stylus touches it. `setStylusHandwritingSessionTimeout(Duration)`, `onUpdateEditorToolType(int)`. Handwriting gestures via `InputConnection.performHandwritingGesture` (delete, select, insert, join/split). Delegation for fake text fields. |
 | 35 | 15 | `onStartConnectionlessStylusHandwriting(int, CursorAnchorInfo)` and `finishConnectionlessStylusHandwriting(CharSequence)` for apps that don't own an `InputConnection`. |
+| 36 | 16 | `setStylusHandwritingRegion(Region)`: IME can tell the system which screen region should start handwriting. **This is your Pad 7's level.** |
+| 37 | 17 | No `InputMethodService` changes (class absent from the 36→37 diff). `InputMethodManager` only deprecates some show/hide flags. |
 
 Flow in `LatinIME.kt`:
 
@@ -125,13 +128,35 @@ stylus touches EditText (system decides) ──► onPrepareStylusHandwriting() 
 ```
 
 FUTO currently declares **no** stylus support in `method.xml`, so this is net-new.
+Neither do FlorisBoard nor HeliBoard (checked their `method.xml` and IME service
+on 2026-10-17; a third-party "research" note claiming FlorisBoard advertises it is
+wrong). No FOSS Android keyboard ships this today.
 
-**Open risk (unverified):** whether HyperOS 2 keeps the Android 14 stylus
-handwriting framework intact. Gboard's "Write in text fields" launched on Pixel and
-Galaxy tablets; no source confirms it on Xiaomi. **Test before building Mode B:**
-install Gboard 13.7+ on the Pad 7 and look for *Settings → Write in text fields*.
-If it appears and works, the framework path is open to us too. If not, Mode A is
-still fully functional because it needs none of these APIs.
+**Fresh reference implementation (2026-10-12):** MSIME (水杉输入法, GPL-3.0, Java on
+Android) merged [PR #7281](https://github.com/metasequoiaime/msime/pull/7281),
+"write with a stylus directly in the input field". It declares
+`supportsStylusHandwriting`, hooks `onPrepareStylusHandwriting` and
+`onStylusHandwritingMotionEvent`, min API 34, recognizer = ML Kit. Its author
+documented three gotchas we will hit too:
+
+1. The system handwriting window uses the IME floating theme and can collapse to
+   `wrap_content`; hand it to `WindowManager` with full-screen params.
+2. On the second stroke in the same session the default dispatch stops delivering
+   events; route `MotionEvent`s straight to the ink view.
+3. Lint does not flag API-34 calls made through an `InputMethodService` subclass,
+   so guard with explicit `Build.VERSION.SDK_INT` checks.
+
+GPL-3.0 code cannot be copied into a Source-First-licensed fork, so read it for
+the API choreography and write our own.
+
+**Open risk (weakly indicated, not verified):** whether HyperOS 3 keeps the
+Android 14+ stylus handwriting framework intact. User posts describe a Gboard
+"use stylus to write in text fields" toggle on the Xiaomi Pad 7, which is the
+Android-framework feature, so the signs are positive, but there is no vendor or
+press confirmation. **Test before building Mode B:** install Gboard 13.7+ on the
+Pad 7 and look for *Settings → Write in text fields*. If it appears and works, the
+framework path is open to us too. If not, Mode A is still fully functional because
+it needs none of these APIs.
 
 ## 3. Recognition engine: the real problem
 
@@ -139,11 +164,27 @@ This is where the privacy question actually lives. Honest comparison:
 
 | Engine | Open? | Phones home? | Latin cursive quality | Size | Effort | Verdict |
 |---|---|---|---|---|---|---|
-| **ML Kit Digital Ink** (what Gboard uses) | No, Google binary | Recognition is on-device. Model (~20 MB/lang) is downloaded from Google once. Unverified whether it needs Play Services. | Excellent | ~20 MB | Days | Dev reference and accuracy baseline only. Not the shipping engine. |
+| **ML Kit Digital Ink** `19.0.0` (Aug 2025, actively maintained, not deprecated; what Gboard and MSIME use) | No, Google binary | Recognition is on-device. Model (~20 MB/lang) is downloaded from Google once. Unverified whether it needs Play Services. | Excellent | ~20 MB | Days | Dev reference and accuracy baseline only. Not the shipping engine. |
 | **Offline HTR via ONNX** (render strokes to a line image, CRNN+CTC or TrOCR-small) | Yes | Never | Good for print, OK for cursive. Throws away pen timing. | 10 MB int8 CRNN to ~230 MB float TrOCR | Weeks | **Phase 2 target.** Use `onnxruntime-android`. Start from an existing IAM-trained CRNN. |
 | **Own online recognizer** (BLSTM+CTC on Bézier-resampled strokes, Google's 2019 recipe, trained on IAM-OnDB) | Yes | Never | Potentially best, uses timing + order | < 5 MB | Weeks to months, needs GPU time | Phase 3 stretch goal. |
 | **Zinnia** (SVM, MIT) | Yes | Never | Per-character only, built for CJK | Small | Days | Only if you want Chinese/Japanese boxes. |
 | **MyScript / WritePad** | Commercial / GPLv3 abandoned | n/a | Great / unknown | | | Skip. |
+
+**State of open research as of Oct 2026 (checked):** still no off-the-shelf,
+open, on-device *online* (stroke-based) Latin recognizer with released weights.
+What does exist, and how it helps us:
+
+- **InkSight** (Google Research, code Apache-2.0, `Small-p` checkpoint on Hugging
+  Face): converts *photos* of handwriting into digital ink. Desktop TensorFlow,
+  ViT + mT5, not a mobile model. Its real value to us: it can turn the large
+  *offline* IAM image dataset into synthetic *online* stroke data, which is the
+  single biggest shortage when training our own stroke recognizer.
+- **ScribeTokens** (Google, Mar 2026): fixed-vocabulary tokenization of digital
+  ink, benchmarked on IAM-OnDB. Paper only, no weights found.
+- **Online+offline fusion transformer** (Jun 2025): early-fuses stroke data and
+  rendered image. Paper; weight release not confirmed.
+- **TrOCR / Florence-2** style VLMs: image-only, 200 MB+ float, strong on messy
+  handwriting but heavy for a keyboard. Qualcomm publishes NPU-tuned TrOCR builds.
 
 **Recommendation (confidence: medium-high):** build the interface, validate the
 whole UX in Mode A against ML Kit behind a debug build flag, measure its accuracy
@@ -168,6 +209,7 @@ Phase 4  Gestures + polish     ███  ongoing
 - `./gradlew assembleUnstableDebug`, sideload to the Pad 7, confirm it runs unmodified.
 - Enable stylus simulation for emulator testing: `adb shell setprop debug.input.simulate_stylus_with_touch true`.
 - Run the Gboard "Write in text fields" check from §2.2 and record the result here.
+- Confirm the Pad 7's exact HyperOS 3 build and Android API level (`adb shell getprop ro.build.version.sdk`, expect 36).
 
 ### Phase 1: handwriting pad (confidence: high)
 1. `uix/handwriting/HandwritingRecognizer.kt` interface + `InkCapture.kt` (MotionEvent → strokes, use `getHistoricalX/Y/EventTime/Pressure` so we don't drop samples, filter `TOOL_TYPE_STYLUS` optionally).
@@ -188,6 +230,8 @@ Phase 4  Gestures + polish     ███  ongoing
 2. Override the six API-33 methods in `LatinIME.kt`; ink view in `getStylusHandwritingWindow()`.
 3. `setStylusHandwritingSessionTimeout` tuned to your writing speed.
 4. Reuse the same recognizer instance from Phase 1's `PersistentActionState`.
+5. On API 36 use `setStylusHandwritingRegion(Region)` so handwriting only starts over real text fields, not over the keyboard's own canvas.
+6. Apply the three MSIME gotchas from §2.2 up front.
 
 ### Phase 4: gestures and polish
 - Scratch-out to delete, caret to insert space, via `performHandwritingGesture` (API 34).
@@ -202,9 +246,13 @@ Phase 4  Gestures + polish     ███  ongoing
   non-commercial purposes, with a prominent "modified" notice**, keeping FUTO's
   notices and payment-related functionality intact.
 - Upstream PRs require signing FUTO's CLA, and their README explicitly asks
-  contributors **not to submit AI-generated pull requests or issues**. Code drafted
-  with Claude in this repo therefore stays a personal fork unless you rewrite and
-  own it yourself, or ask FUTO first. Flagging this plainly so it's not a surprise.
+  contributors **not to submit AI-generated pull requests or issues**, adding that
+  PRs with heavy visible AI use may be closed without comment (policy still current
+  Oct 2026). Code drafted with Claude in this repo therefore stays a personal fork
+  unless you rewrite and own it yourself, or ask FUTO first. Flagging this plainly
+  so it's not a surprise.
+- MSIME's stylus implementation is GPL-3.0. Reading it is fine, copying it into a
+  Source-First fork is not.
 - If a fully FOSS home matters more than FUTO specifically, HeliBoard (GPL-3,
   also a LatinIME descendant) is the obvious alternative base. Same Android IME
   APIs, no CLA, but you lose FUTO's action-window system and whisper integration.
@@ -213,12 +261,16 @@ Phase 4  Gestures + polish     ███  ongoing
 
 ## 6. Open questions to answer on the device
 
-- [ ] Does Gboard's "Write in text fields" appear on the Pad 7 under HyperOS 2?
+- [ ] Does Gboard's "Write in text fields" appear on the Pad 7 under HyperOS 3 / Android 16? (User reports say yes; confirm.)
 - [ ] Does the Focus Pen report `TOOL_TYPE_STYLUS` and pressure through standard `MotionEvent`s in a plain Android app? (Quick test app, 20 lines.)
 - [ ] Does ML Kit Digital Ink work with Play Services firewalled / absent? (Only matters for the dev-phase baseline.)
 - [ ] Which hand do you write with and how fast? Sets the idle-commit timeout default.
 
 ## Sources
+
+Checked 2026-10-17. Freshness notes: FUTO releases page (v0.1.30, Aug 2026);
+Android API diffs through level 37; MSIME PR merged 2026-10-12; HyperOS 3 rollout
+coverage Nov 2025 onward; ML Kit artifact 19.0.0 (Aug 2025).
 
 - FUTO Keyboard repo and README: https://github.com/futo-org/android-keyboard
 - FUTO Source First License 1.1: https://github.com/futo-org/android-keyboard/blob/master/LICENSE.md
@@ -233,3 +285,17 @@ Phase 4  Gestures + polish     ███  ongoing
 - Qualcomm TrOCR size/latency figures: https://huggingface.co/qualcomm/TrOCR
 - DE·HTR 10 MB int8 ONNX line recognizer: https://huggingface.co/naeyn/de-htr-web
 - Zinnia: https://packages.fedoraproject.org/pkgs/zinnia/zinnia
+- InputMethodService API 36 diff (`setStylusHandwritingRegion`): https://developer.android.com/sdk/api_diff/36/changes/android.inputmethodservice.InputMethodService
+- android.view.inputmethod API 37 diff index: https://developer.android.com/sdk/api_diff/37/changes/pkg_android.view.inputmethod
+- FUTO Keyboard releases (v0.1.30): https://github.com/futo-org/android-keyboard/releases
+- MSIME stylus-in-field PR #7281: https://github.com/metasequoiaime/msime/pull/7281
+- MSIME repo (GPL-3.0): https://github.com/metasequoiaime/msime
+- Xiaomi Pad 7 HyperOS 3 / Android 16 rollout: https://www.notebookcheck.net/Stable-HyperOS-3-rolls-out-to-Xiaomi-Pad-7-with-more-Xiaomi-and-Redmi-devices-to-follow-later-this-month.1160353.0.html
+- Xiaomi Pad 7 HyperOS 3 global build: https://hyperosinsider.com/xiaomi-pad-7-hyperos-3-global-update-released-android-16-and-more-features/
+- Android 17 overview (June 2026): https://daily.dev/posts/qwbiliq3y
+- ML Kit digital-ink-recognition artifact history: https://mvnrepository.com/artifact/com.google.mlkit/digital-ink-recognition
+- InkSight (Google Research): https://github.com/google-research/inksight
+- ScribeTokens (Mar 2026): https://arxiv.org/html/2603.02805v1
+- Online/offline fusion HTR (Jun 2025): https://huggingface.co/papers/2506.20255
+- FlorisBoard method.xml (no stylus flag): https://github.com/florisboard/florisboard/blob/main/app/src/main/res/xml/method.xml
+- MakeUseOf FUTO review noting no handwriting: https://www.makeuseof.com/offline-android-keyboard-gboard-alternative/
