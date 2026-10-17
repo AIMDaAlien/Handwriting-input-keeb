@@ -10,7 +10,7 @@ with no Android SDK and your laptop with one.
 | Build FUTO unmodified (`assembleUnstableDebug`) | GitHub Actions or the M4 Air | CI green on run #1 (2026-10-17, 12 min), APK artifact available. Not possible from the cloud container: Google's SDK host and FUTO's GitLab are unreachable there |
 | M4 Air toolchain | **your machine** | `tools/mac/bootstrap.sh`, see `docs/MAC_SETUP.md` |
 | Survey: `scripts/phase0-device-check.sh` | **your machine** | done 2026-10-17 over Wireless debugging, see `docs/device-survey.txt` and §2 results |
-| Sideload unmodified FUTO to Pad 7 | **your machine** | blocked: `INSTALL_FAILED_USER_RESTRICTED` (HyperOS "Install via USB" gate) |
+| Sideload unmodified FUTO to Pad 7 | **your machine** | done 2026-10-17: 0.1.30-unstable (debug) installed and typing. adb installs are blocked (`INSTALL_FAILED_USER_RESTRICTED`: com.miui.securitycenter removed for user 0, so the "Install via USB" gate cannot confirm); installed from Downloads with the on-device installer instead |
 | Gboard "Write in text fields" check | **your machine** | pending |
 
 ## 1. Build FUTO
