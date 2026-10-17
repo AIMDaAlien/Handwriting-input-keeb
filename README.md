@@ -4,6 +4,21 @@
 > Nothing here is built yet. Each phase has a confidence level and the research
 > behind it. Anything marked *unverified* could not be confirmed from a primary source.
 
+## 0. Repo layout and status
+
+```
+recognizer-core/   pure-JVM Kotlin: ink model, preprocessing, rasterizer, commit
+                   policy, HandwritingRecognizer API, fake engine, 25 unit tests.
+                   `./gradlew :recognizer-core:test` needs no Android SDK.
+upstream/          FUTO Keyboard source, git submodule pinned to tag 0.1.30
+                   (GitHub mirror). Not modified yet.
+docs/PHASE0.md     build-on-your-machine steps, device survey, Gboard test.
+scripts/           phase0-device-check.sh (adb, read-only).
+```
+
+Phase 0 status: recognizer core done and tested; FUTO pinned. The APK build and the
+device survey need a machine with the Android SDK and a USB cable, see `docs/PHASE0.md`.
+
 ## 1. What we're building
 
 A **privacy-first stylus handwriting input** that lives inside a personal fork of
@@ -204,7 +219,7 @@ Phase 3  Mode B in-field       ████  1-2 weekends, gated on HyperOS test
 Phase 4  Gestures + polish     ███  ongoing
 ```
 
-### Phase 0: fork and build (confidence: high)
+### Phase 0: fork and build (confidence: high) — in progress, see `docs/PHASE0.md`
 - `git clone --recursive https://gitlab.futo.org/keyboard/latinime.git` (GitHub is a mirror).
 - `./gradlew assembleUnstableDebug`, sideload to the Pad 7, confirm it runs unmodified.
 - Enable stylus simulation for emulator testing: `adb shell setprop debug.input.simulate_stylus_with_touch true`.
@@ -212,7 +227,7 @@ Phase 4  Gestures + polish     ███  ongoing
 - Confirm the Pad 7's exact HyperOS 3 build and Android API level (`adb shell getprop ro.build.version.sdk`, expect 36).
 
 ### Phase 1: handwriting pad (confidence: high)
-1. `uix/handwriting/HandwritingRecognizer.kt` interface + `InkCapture.kt` (MotionEvent → strokes, use `getHistoricalX/Y/EventTime/Pressure` so we don't drop samples, filter `TOOL_TYPE_STYLUS` optionally).
+1. ~~Recognizer interface~~ done in `recognizer-core` (`HandwritingRecognizer`, `StrokeBuilder`, `CommitPolicy`). Remaining: a thin Android adapter from `MotionEvent` to `StrokeBuilder` (use `getHistoricalX/Y/EventTime/Pressure` so we don't drop samples, filter `TOOL_TYPE_STYLUS` optionally).
 2. `uix/handwriting/HandwritingAction.kt` + `HandwritingActionWindow` (Compose Canvas, candidate strip, idle-commit timer).
 3. Register `"handwriting"` in `Registry.kt`, add to default Favorites.
 4. Engine: `MlKitRecognizer` under a `debugEngines` flag to validate UX. Deliverable: write "hello world" into any app.
