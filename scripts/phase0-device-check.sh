@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # Phase 0 device survey for the Xiaomi Pad 7 + Focus Pen.
-# Run with the tablet plugged in and USB debugging on. Read-only: nothing is changed.
+# Run with the tablet on USB or Wireless debugging (set ANDROID_SERIAL if adb lists it twice).
+# Read-only: nothing is changed. getevent streams forever, hence the device-side timeouts.
 set -u
-say() { printf '\n== %s\n' "$*"; }
+# Over Wireless debugging `adb shell` sometimes never returns after the remote command exits.
+# macOS has no timeout(1), so cap every adb call from the host side.
+ADB_BIN="$(command -v adb)"
+adb() { perl -e 'alarm shift; exec @ARGV' 30 "$ADB_BIN" "$@"; }
+say(){ printf '\n== %s\n' "$*"; }
 adb get-state >/dev/null 2>&1 || { echo "no device: enable USB debugging and run 'adb devices'"; exit 1; }
 # A flaky USB link makes later commands print "no devices" and the survey reads as false negatives.
 alive() { adb get-state >/dev/null 2>&1 || { echo "DEVICE LOST mid-survey: results above are incomplete; check cable/port and re-run"; exit 2; }; }
@@ -19,13 +24,13 @@ adb shell settings get secure stylus_handwriting_enabled 2>/dev/null || echo "se
 
 say "Installed keyboards and whether they advertise stylus handwriting"
 adb shell ime list -a -s
-adb shell dumpsys input_method 2>/dev/null | grep -iE "supportsStylusHandwriting|mStylusHandwriting|handwriting" | head -20 || true
+adb shell timeout 15 dumpsys input_method 2>/dev/null | grep -iE "supportsStylusHandwriting|mStylusHandwriting|handwriting" | head -20 || true
 
 say "Gboard present? (its 'Write in text fields' screen is the cheapest framework test)"
 adb shell pm list packages | grep -q com.google.android.inputmethod.latin && echo "Gboard installed" || echo "Gboard not installed"
 
 say "Input devices: look for a stylus/pen device with ABS_PRESSURE"
-adb shell getevent -il 2>/dev/null | grep -iE "add device|name:|ABS_PRESSURE|ABS_MT_TOOL_TYPE|BTN_TOOL_PEN" | head -40
+adb shell timeout 5 getevent -il 2>/dev/null | grep -iE "add device|name:|ABS_PRESSURE|ABS_MT_TOOL_TYPE|BTN_TOOL_PEN" | head -40
 
 say "Stylus-with-touch simulation flag (for testing on devices without a pen; leave 0 on the Pad 7)"
 adb shell getprop debug.input.simulate_stylus_with_touch

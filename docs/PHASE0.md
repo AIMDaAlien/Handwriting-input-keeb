@@ -9,7 +9,8 @@ with no Android SDK and your laptop with one.
 | Recognizer core: interface, ink model, preprocessing, rasterizer, commit policy, serialization, unit tests | cloud | done, see `recognizer-core/` |
 | Build FUTO unmodified (`assembleUnstableDebug`) | GitHub Actions or the M4 Air | CI green on run #1 (2026-10-17, 12 min), APK artifact available. Not possible from the cloud container: Google's SDK host and FUTO's GitLab are unreachable there |
 | M4 Air toolchain | **your machine** | `tools/mac/bootstrap.sh`, see `docs/MAC_SETUP.md` |
-| Sideload to Pad 7 and run `scripts/phase0-device-check.sh` | **your machine** | pending |
+| Survey: `scripts/phase0-device-check.sh` | **your machine** | done 2026-10-17 over Wireless debugging, see `docs/device-survey.txt` and §2 results |
+| Sideload unmodified FUTO to Pad 7 | **your machine** | blocked: `INSTALL_FAILED_USER_RESTRICTED` (HyperOS "Install via USB" gate) |
 | Gboard "Write in text fields" check | **your machine** | pending |
 
 ## 1. Build FUTO
@@ -52,6 +53,22 @@ What each section tells us:
 - **`stylus_handwriting_enabled`.** This is the system switch Android 14 added under Settings → System → Stylus. If it prints `1` or `0`, the framework is present. If it prints nothing, Xiaomi may have removed the UI but the API can still exist; the Gboard test below settles it.
 - **`dumpsys input_method`.** Lists every installed IME and whether it declares `supportsStylusHandwriting`. Gboard should say true, FUTO false (for now).
 - **`getevent -il`.** Look for a device whose name contains "pen" or "stylus" with `ABS_PRESSURE`. That confirms the Focus Pen reports as `TOOL_TYPE_STYLUS` with pressure, which both input modes rely on for palm rejection.
+
+### Results, 2026-10-17 (Pad 7 global, `uke_global`, model 2410CRP4CG)
+
+| Check | Result | Reading |
+|---|---|---|
+| Android / API / OS | 16 / **36** / OS3.0 | `setStylusHandwritingRegion` available |
+| `stylus_handwriting_enabled` | `0` | Framework switch exists, currently off |
+| IMEs | FUTO Play Store build only (`org.futo.inputmethod.latin.playstore`), `isStylusHandwritingEnabled=false` | As expected |
+| Gboard | not installed | Install from Play Store before §3 |
+| Pen digitizers | `NVTCapacitivePenP81c` (pressure 0–16383), `NVTCapacitivePenM80p` (0–8191) | Two pen protocols; which one the Focus Pen drives is unverified until a live `getevent` while writing |
+| Pen over Bluetooth | "Xiaomi Focus Pen" + Keyboard + Mouse HID devices | Pen buttons arrive as key events, separate from ink |
+| Touch panel | `ABS_MT_TOOL_TYPE` max 2 | Can tag contacts as pen (`MT_TOOL_PEN`) |
+
+USB adb was unusable on this tablet + M4 Air: the link resets whenever adb sends traffic
+(`usb_write ... e00002ed`), on both ports, with adb 37.0.1 and 35.0.2, native and libusb backends.
+Wireless debugging is stable (15/15). Cable not yet ruled out.
 
 ## 3. The Gboard test (five minutes, decides Phase 3)
 

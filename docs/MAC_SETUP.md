@@ -34,3 +34,7 @@ Checked 2026-10-17: Android Studio's known-issues page has no macOS 27 entry, an
 
 - Enable Developer options (tap *OS version* seven times), USB debugging, and **Install via USB**. Global HyperOS historically does not demand a Mi account for `adb install`; China ROMs do. Flagging as unverified for HyperOS 3.
 - Revoke-and-reauthorize if the tablet shows `unauthorized` in `adb devices`.
+- If USB adb flaps (the "USB debugging connected" notification toggles on every command), use
+  Wireless debugging: Developer options → Wireless debugging → Pair device with pairing code, then
+  `adb mdns services`, `adb pair <ip:pairing-port> <code>`, `adb connect <ip:connect-port>`.
+  adb then lists the tablet twice; `export ANDROID_SERIAL=<ip:connect-port>`.

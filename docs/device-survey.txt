@@ -1,0 +1,65 @@
+
+== Build
+2410CRP4CG
+16
+36
+OS3.0
+
+== Stylus handwriting framework switch (Android 14+; absent on some OEM builds)
+0
+
+== Installed keyboards and whether they advertise stylus handwriting
+org.futo.inputmethod.latin.playstore/org.futo.inputmethod.latin.LatinIME
+        supportedHandwritingGestureTypes=(none)
+        supportedHandwritingGesturePreviewTypes=(none)
+        isStylusHandwritingEnabled=false
+
+== Gboard present? (its 'Write in text fields' screen is the cheapest framework test)
+Gboard not installed
+
+== Input devices: look for a stylus/pen device with ABS_PRESSURE
+add device 1: /dev/input/event19
+  name:     "Xiaomi Focus Pen"
+add device 2: /dev/input/event18
+  name:     "Xiaomi Focus Pen Keyboard"
+add device 3: /dev/input/event17
+  name:     "Xiaomi Focus Pen Mouse"
+add device 4: /dev/input/event16
+  name:     "cliffs-mtp-snd-card Button Jack"
+add device 5: /dev/input/event15
+  name:     "cliffs-mtp-snd-card Headset Jack"
+add device 6: /dev/input/event14
+  name:     "xiaomi keyboard WakeUp"
+add device 7: /dev/input/event13
+  name:     "NVTCapacitivePenP81c"
+                ABS_PRESSURE          : value 0, min 0, max 16383, fuzz 0, flat 0, resolution 0
+add device 8: /dev/input/event12
+  name:     "NVTCapacitivePenM80p"
+                ABS_PRESSURE          : value 0, min 0, max 8191, fuzz 0, flat 0, resolution 0
+add device 9: /dev/input/event11
+  name:     "NVTCapacitiveTouchScreen"
+add device 10: /dev/input/event10
+  name:     "Xiaomi Consumer"
+add device 11: /dev/input/event9
+  name:     "Xiaomi Touch"
+                ABS_MT_TOOL_TYPE      : value 0, min 0, max 2, fuzz 0, flat 0, resolution 0
+add device 12: /dev/input/event8
+  name:     "Xiaomi Mouse"
+add device 13: /dev/input/event7
+  name:     "Xiaomi Keyboard"
+add device 14: /dev/input/event6
+  name:     "pmic_pwrkey_bark"
+add device 15: /dev/input/event5
+  name:     "pmic_pwrkey_resin_bark"
+add device 16: /dev/input/event4
+  name:     "pmic_resin"
+add device 17: /dev/input/event3
+  name:     "xiaomi-hall"
+add device 18: /dev/input/event2
+  name:     "pmic_pwrkey"
+add device 19: /dev/input/event1
+
+== Stylus-with-touch simulation flag (for testing on devices without a pen; leave 0 on the Pad 7)
+
+
+== Done. Paste this output into docs/PHASE0.md under 'Device survey results'.
