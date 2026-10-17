@@ -14,6 +14,7 @@ upstream/          FUTO Keyboard source, git submodule pinned to tag 0.1.30
                    (GitHub mirror). Not modified yet.
 docs/PHASE0.md     build steps, device survey, Gboard test.
 docs/MAC_SETUP.md  M4 Air toolchain, one command.
+docs/HANDOFF.md    continuation prompt for Claude Code on the Air.
 tools/mac/         Brewfile + bootstrap.sh (idempotent).
 scripts/           phase0-device-check.sh (adb, read-only).
 .github/workflows/ build.yml: recognizer-core tests + FUTO unstable-debug APK artifact.
