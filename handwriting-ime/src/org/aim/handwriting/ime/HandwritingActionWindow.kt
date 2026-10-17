@@ -33,8 +33,10 @@ import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.input.motionprediction.MotionEventPredictor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -78,11 +80,40 @@ class HandwritingActionWindow(
     private var message by mutableStateOf<String?>(null)
     private var padSize = IntSize.Zero
 
+    private var predictor: MotionEventPredictor? = null
+    // Predicted continuation of the live stroke, drawn as a tail and never fed to recognition.
+    private var predicted: List<Offset> = emptyList()
+
     private var transaction: ActionInputTransaction? = null
     private var tickJob: Job? = null
     private var recognizeJob: Job? = null
 
     private fun now() = SystemClock.uptimeMillis()
+
+    // Taller than the keyboard so the writing hand rests on the pad, not on the
+    // navigation bar below it. Palm touches on the pad are already ignored.
+    override val fixedWindowHeight: Dp
+        get() = 340.dp
+
+    private fun onPadEvent(ev: MotionEvent, view: android.view.View): Boolean {
+        // Deliver every sample as it arrives instead of once per frame.
+        if (ev.actionMasked == MotionEvent.ACTION_DOWN) view.requestUnbufferedDispatch(ev)
+        val p = predictor ?: MotionEventPredictor.newInstance(view).also { predictor = it }
+        p.record(ev)
+        val handled = adapter.onTouchEvent(ev)
+        predicted = emptyList()
+        if (ev.actionMasked == MotionEvent.ACTION_MOVE && adapter.isStrokeActive) {
+            p.predict()?.let { pe ->
+                val i = adapter.activeIndexIn(pe).takeIf { it >= 0 } ?: 0
+                if (i < pe.pointerCount) {
+                    predicted = (0 until pe.historySize).map { h -> Offset(pe.getHistoricalX(i, h), pe.getHistoricalY(i, h)) } +
+                        Offset(pe.getX(i), pe.getY(i))
+                }
+                pe.recycle()
+            }
+        }
+        return handled
+    }
 
     override fun onStrokeStart() {
         if (policy.onPenDown(now()) == Decision.CANCEL_PENDING) {
@@ -208,6 +239,7 @@ class HandwritingActionWindow(
     override fun WindowContents(keyboardShown: Boolean) {
         val view = LocalView.current
         val inkColor = MaterialTheme.colorScheme.onSurface
+        val restColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
@@ -239,16 +271,16 @@ class HandwritingActionWindow(
                     .fillMaxWidth()
                     .weight(1f)
                     .onSizeChanged { padSize = it }
-                    .pointerInteropFilter { ev ->
-                        // Deliver every sample as it arrives instead of once per frame.
-                        if (ev.actionMasked == MotionEvent.ACTION_DOWN) view.requestUnbufferedDispatch(ev)
-                        adapter.onTouchEvent(ev)
-                    }
+                    .pointerInteropFilter { ev -> onPadEvent(ev, view) }
             ) {
                 // Reading the counter subscribes this draw pass to ink changes.
                 if (inkVersion < 0) return@Canvas
                 val stroke = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-                for (s in builder.snapshot().strokes) {
+                // Palm rest: a visual cue to write in the upper part of the pad.
+                val restTop = size.height - PALM_REST.toPx()
+                drawRect(restColor, topLeft = Offset(0f, restTop), size = androidx.compose.ui.geometry.Size(size.width, size.height - restTop))
+                val strokes = builder.snapshot().strokes
+                for (s in strokes) {
                     val path = Path()
                     s.points.forEachIndexed { i, p ->
                         if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y)
@@ -259,8 +291,20 @@ class HandwritingActionWindow(
                         drawPath(path, inkColor, style = stroke)
                     }
                 }
+                val last = strokes.lastOrNull()?.points?.lastOrNull()
+                if (adapter.isStrokeActive && last != null && predicted.isNotEmpty()) {
+                    val tail = Path().apply {
+                        moveTo(last.x, last.y)
+                        predicted.forEach { lineTo(it.x, it.y) }
+                    }
+                    drawPath(tail, inkColor, style = stroke)
+                }
             }
         }
+    }
+
+    private companion object {
+        val PALM_REST = 96.dp
     }
 
     override fun close(): CloseResult {

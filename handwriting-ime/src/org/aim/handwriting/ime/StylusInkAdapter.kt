@@ -30,6 +30,12 @@ class StylusInkAdapter(
     var stylusSeen = false
         private set
 
+    val isStrokeActive: Boolean get() = activePointerId != NO_POINTER
+
+    /** Pointer index of the live stroke in [ev], or -1. */
+    fun activeIndexIn(ev: MotionEvent): Int =
+        if (activePointerId == NO_POINTER) -1 else ev.findPointerIndex(activePointerId)
+
     fun onTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> onDown(ev, ev.actionIndex)

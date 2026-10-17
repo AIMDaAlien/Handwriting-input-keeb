@@ -1,5 +1,5 @@
 diff --git a/build.gradle b/build.gradle
-index b569e2d6b..95dfb61dd 100644
+index b569e2d6b..fc101b3e5 100644
 --- a/build.gradle
 +++ b/build.gradle
 @@ -285,7 +285,7 @@ android {
@@ -23,6 +23,14 @@ index b569e2d6b..95dfb61dd 100644
              manifest.srcFile 'java/AndroidManifest.xml'
              assets.srcDirs = ['java/assets']
          }
+@@ -410,6 +413,7 @@ dependencies {
+     implementation 'androidx.activity:activity-compose:1.9.1'
+     implementation platform('androidx.compose:compose-bom:2025.06.00')
+     implementation 'androidx.compose.ui:ui'
++    implementation 'androidx.input:input-motionprediction:1.0.0' // handwriting fork: pen latency
+     implementation 'androidx.compose.ui:ui-graphics'
+     implementation 'androidx.compose.ui:ui-tooling-preview'
+     implementation 'androidx.compose.material3:material3'
 diff --git a/java/src/org/futo/inputmethod/latin/uix/actions/Registry.kt b/java/src/org/futo/inputmethod/latin/uix/actions/Registry.kt
 index 8130eae06..fbdcbd0c5 100644
 --- a/java/src/org/futo/inputmethod/latin/uix/actions/Registry.kt
