@@ -31,6 +31,61 @@ index b569e2d6b..fc101b3e5 100644
      implementation 'androidx.compose.ui:ui-graphics'
      implementation 'androidx.compose.ui:ui-tooling-preview'
      implementation 'androidx.compose.material3:material3'
+diff --git a/java/res/xml/method.xml b/java/res/xml/method.xml
+index d112e270b..c9e5467df 100644
+--- a/java/res/xml/method.xml
++++ b/java/res/xml/method.xml
+@@ -5,7 +5,8 @@
+     android:isDefault="true"
+     android:supportsSwitchingToNextInputMethod="true"
+     android:supportsInlineSuggestions="true"
+-    android:suppressesSpellChecker="true">
++    android:suppressesSpellChecker="true"
++    android:supportsStylusHandwriting="true">
+     <subtype android:icon="@drawable/ic_launcher_foreground"
+         android:label="@string/english_ime_name"
+         android:imeSubtypeMode="keyboard"
+diff --git a/java/src/org/futo/inputmethod/latin/LatinIME.kt b/java/src/org/futo/inputmethod/latin/LatinIME.kt
+index 44243e6c3..80242e224 100644
+--- a/java/src/org/futo/inputmethod/latin/LatinIME.kt
++++ b/java/src/org/futo/inputmethod/latin/LatinIME.kt
+@@ -43,6 +43,7 @@ import androidx.lifecycle.LifecycleRegistry
+ import androidx.lifecycle.ViewModelStore
+ import androidx.lifecycle.ViewModelStoreOwner
+ import androidx.lifecycle.lifecycleScope
++import org.aim.handwriting.ime.StylusHandwritingController
+ import androidx.lifecycle.setViewTreeLifecycleOwner
+ import androidx.lifecycle.setViewTreeViewModelStoreOwner
+ import androidx.savedstate.SavedStateRegistry
+@@ -508,9 +509,28 @@ class LatinIME : InputMethodServiceCompose(), LatinIMELegacy.SuggestionStripCont
+         uixManager.updateLocale(Subtypes.getLocale(subtype))
+     }
+ 
++    // Handwriting fork: write directly into text fields (API 33+ stylus handwriting).
++    private val stylusHandwriting by lazy {
++        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) null
++        else StylusHandwritingController(
++            service = this,
++            scope = lifecycleScope,
++            locale = { RichInputMethodManager.getInstance().currentSubtypeLocales.firstOrNull()?.toLanguageTag() ?: "en" },
++            createTransaction = { runCatching { imeManager.createInputTransaction() }.getOrNull() },
++        )
++    }
++
++    override fun onStartStylusHandwriting(): Boolean =
++        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && stylusHandwriting?.onStart() == true
++
++    override fun onFinishStylusHandwriting() {
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) stylusHandwriting?.onFinish()
++    }
++
+     private var destroying = false
+     override fun onDestroy() {
+         destroying = true
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) stylusHandwriting?.onDestroy()
+         unregisterReceiver(unlockReceiver)
+         stopJobs()
+         viewModelStore.clear()
 diff --git a/java/src/org/futo/inputmethod/latin/uix/actions/Registry.kt b/java/src/org/futo/inputmethod/latin/uix/actions/Registry.kt
 index 8130eae06..fbdcbd0c5 100644
 --- a/java/src/org/futo/inputmethod/latin/uix/actions/Registry.kt
