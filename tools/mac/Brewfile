@@ -1,15 +1,13 @@
 # Dev toolchain for the FUTO handwriting fork on Apple Silicon.
 # Versions mirror FUTO's own CI image (.ci/Dockerfile in upstream/): JDK 21,
 # SDK platform 35, build-tools 35.0.0, NDK 28.2.13676358, Python 3 + requests.
-tap "homebrew/bundle"
-
+# No tap "homebrew/bundle": it was deprecated and emptied; brew bundle is built in.
+# No android-platform-tools cask: adb comes from the SDK so Studio and the CLI share one adb.
 brew "git"
 brew "git-lfs"            # the futo-swipe submodule is a Hugging Face repo with LFS blobs
-brew "python@3.12"
-brew "python-requests"    # upstream/java/res-bundle/download-bundles.py imports requests
+brew "python@3.12"        # requests goes into $ROOT/.venv (PEP 668); only the manual updateBundleResources task needs it
 brew "gh"                 # pull CI-built APKs: gh run download
 
 cask "temurin@21"             # same JDK major as FUTO CI
 cask "android-commandlinetools"
-cask "android-platform-tools" # adb, fastboot
 cask "android-studio"         # optional GUI; the bootstrap works without ever opening it

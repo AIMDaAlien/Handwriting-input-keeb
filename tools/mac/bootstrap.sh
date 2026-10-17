@@ -26,6 +26,12 @@ step() { printf '\n\033[1;35m==> %s\033[0m\n' "$*"; }   # lavender, naturally
 
 [[ "$(uname -s)" == "Darwin" ]] || { echo "This script is for macOS."; exit 1; }
 [[ "$(uname -m)" == "arm64" ]]  || echo "warning: not Apple Silicon; casks still work but check the JDK arch"
+# Fail before any download: a sudo-run installer can leave ~/.zprofile owned by root.
+if [[ -e "$HOME/.zprofile" && ! -w "$HOME/.zprofile" ]]; then
+  echo "~/.zprofile is owned by $(stat -f %Su "$HOME/.zprofile") and not writable. Fix, then re-run:"
+  echo "  sudo chown $(id -un) ~/.zprofile"
+  exit 1
+fi
 
 step "Xcode command line tools (git needs them)"
 xcode-select -p >/dev/null 2>&1 || { xcode-select --install; echo "Finish the CLT dialog, then re-run."; exit 1; }
@@ -46,6 +52,10 @@ else
   brew bundle --file="$TMPB" --no-upgrade
 fi
 git lfs install --skip-repo >/dev/null
+# Earlier Brewfiles installed a second adb; two adb versions keep killing each other's server.
+if brew list --cask android-platform-tools >/dev/null 2>&1; then
+  brew uninstall --cask android-platform-tools
+fi
 
 step "Android SDK packages into $SDK (shared with Android Studio)"
 mkdir -p "$SDK"
@@ -81,13 +91,20 @@ else
   [[ -d "$ROOT/.git" ]] || git clone --branch "$REPO_BRANCH" "$REPO_URL" "$ROOT"
 fi
 cd "$ROOT"
-git submodule update --init --recursive --depth 1 || echo "warning: a submodule failed (FUTO GitLab or Hugging Face); the keyboard still builds, swipe may degrade"
+# Full history, not --depth 1: FUTO's build.gradle derives versionCode from git history + tags.
+git submodule update --init --recursive || echo "warning: a submodule failed (FUTO GitLab or Hugging Face); the keyboard still builds, swipe may degrade"
+git -C upstream fetch --tags --force origin || true
 git -C upstream/java/assets/futo-swipe lfs pull 2>/dev/null || true
+
+step "Python venv for upstream's download-bundles.py (requests)"
+[[ -x "$ROOT/.venv/bin/python3" ]] || "$(brew --prefix python@3.12)/bin/python3.12" -m venv "$ROOT/.venv"
+"$ROOT/.venv/bin/python3" -c 'import requests' 2>/dev/null || "$ROOT/.venv/bin/pip" install --quiet requests
 
 step "Smoke test: recognizer-core (no Android SDK needed)"
 ./gradlew --quiet :recognizer-core:test && echo "recognizer-core: tests green"
 
-step "Smoke test: adb"
+step "Smoke test: adb (must be the SDK one)"
+[[ "$(command -v adb)" == "$SDK/platform-tools/adb" ]] || echo "warning: adb resolves to $(command -v adb), not the SDK copy"
 adb version | head -1
 adb devices
 
@@ -98,6 +115,9 @@ Done. Open a NEW terminal (or: source ~/.zprofile), then:
   cd $ROOT
   scripts/phase0-device-check.sh          # tablet plugged in, USB debugging on
   cd upstream && ./gradlew assembleUnstableDebug   # ~10-25 min first time, or let CI do it
+
+Only if you run upstream's updateBundleResources task: source .venv/bin/activate first
+(it needs requests; the normal build only needs stdlib python3).
 
 Android Studio: on first launch pick "Custom", set SDK location to
   $SDK
