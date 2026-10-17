@@ -11,7 +11,7 @@ with no Android SDK and your laptop with one.
 | M4 Air toolchain | **your machine** | `tools/mac/bootstrap.sh`, see `docs/MAC_SETUP.md` |
 | Survey: `scripts/phase0-device-check.sh` | **your machine** | done 2026-10-17 over Wireless debugging, see `docs/device-survey.txt` and §2 results |
 | Sideload unmodified FUTO to Pad 7 | **your machine** | done 2026-10-17: 0.1.30-unstable (debug) installed and typing. adb installs are blocked (`INSTALL_FAILED_USER_RESTRICTED`: com.miui.securitycenter removed for user 0, so the "Install via USB" gate cannot confirm); installed from Downloads with the on-device installer instead |
-| Gboard "Write in text fields" check | **your machine** | pending |
+| Gboard "Write in text fields" check | **your machine** | **passed** 2026-10-17: Focus Pen writes into text fields with Gboard (18.4.1). Needed both Gboard as the current IME and `settings put secure stylus_handwriting_enabled 1` (shipped as `0` on this HyperOS build). Gboard declares `supportsStylusHandwriting` and `supportsConnectionlessStylusHandwriting`. Phase 3 is viable. Unverified: whether the setting survives a reboot |
 
 ## 1. Build FUTO
 
