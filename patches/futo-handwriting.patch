@@ -1,0 +1,67 @@
+diff --git a/build.gradle b/build.gradle
+index b569e2d6b..95dfb61dd 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -285,7 +285,7 @@ android {
+         unstable {
+             dimension "buildType"
+             applicationIdSuffix ".unstable"
+-            versionNameSuffix "-unstable"
++            versionNameSuffix "-unstable-hw-modified"
+ 
+             buildConfigField "boolean", "IS_PLAYSTORE_BUILD", "false"
+             buildConfigField "boolean", "UPDATE_CHECKING", "true"
+@@ -334,7 +334,10 @@ android {
+                     translationsWithoutEngValues('translations/core-ign'),
+                     'java/res-large'
+             ]
+-            java.srcDirs = ['common/src', 'java/src']
++            java.srcDirs = ['common/src', 'java/src',
++                            // Handwriting fork: pure-JVM core + Android glue live outside upstream/
++                            '../recognizer-core/src/main/kotlin', '../handwriting-ime/src']
++            res.srcDirs += ['../handwriting-ime/res']
+             manifest.srcFile 'java/AndroidManifest.xml'
+             assets.srcDirs = ['java/assets']
+         }
+diff --git a/java/src/org/futo/inputmethod/latin/uix/actions/Registry.kt b/java/src/org/futo/inputmethod/latin/uix/actions/Registry.kt
+index 8130eae06..fbdcbd0c5 100644
+--- a/java/src/org/futo/inputmethod/latin/uix/actions/Registry.kt
++++ b/java/src/org/futo/inputmethod/latin/uix/actions/Registry.kt
+@@ -6,6 +6,7 @@ import androidx.collection.mutableIntSetOf
+ import androidx.core.content.edit
+ import androidx.datastore.preferences.core.stringPreferencesKey
+ import org.futo.inputmethod.keyboard.internal.KeyboardCodesSet
++import org.aim.handwriting.ime.HandwritingAction
+ import org.futo.inputmethod.latin.R
+ import org.futo.inputmethod.latin.common.Constants
+ import org.futo.inputmethod.latin.settings.Settings
+@@ -43,6 +44,7 @@ val AllActionsMap = mapOf(
+     "left" to ArrowLeftAction,
+     "right" to ArrowRightAction,
+     "font_typer" to FontTyperAction,
++    "handwriting" to HandwritingAction,
+ )
+ 
+ val ActionToId = AllActionsMap.entries.associate { it.value to it.key }
+@@ -264,7 +266,7 @@ fun String.toActionList(): List<Action> = split(",").mapNotNull { AllActionsMap[
+ val DefaultActionSettings = mapOf(
+     ActionCategory.ActionKey to listOf(EmojiAction),
+     ActionCategory.PinnedKey to listOf(VoiceInputAction),
+-    ActionCategory.Favorites to listOfNotNull(if(IsDebug) MemoryDebugAction else null, SwitchLanguageAction, UndoAction, RedoAction, TextEditAction, ClipboardHistoryAction, ThemeAction, KeyboardModeAction),
++    ActionCategory.Favorites to listOfNotNull(if(IsDebug) MemoryDebugAction else null, SwitchLanguageAction, HandwritingAction, UndoAction, RedoAction, TextEditAction, ClipboardHistoryAction, ThemeAction, KeyboardModeAction),
+     ActionCategory.More to listOf(), // Remaining actions get populated automatically by ensureWellFormed
+     ActionCategory.Disabled to listOf(MemoryDebugAction, SystemVoiceInputAction, BugViewerAction)
+ )
+diff --git a/java/unstable/res/values/strings-appname.xml b/java/unstable/res/values/strings-appname.xml
+index f95e4b0bf..da872aa8b 100644
+--- a/java/unstable/res/values/strings-appname.xml
++++ b/java/unstable/res/values/strings-appname.xml
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+     <!-- Application name for the dev version of keyboard. "FUTO" should not be translated. -->
+-    <string name="english_ime_name">FUTO Keyboard [Dev Build]</string>
++    <string name="english_ime_name">FUTO Keyboard [Dev Build, modified: handwriting]</string>
+ 
+     <!-- Name of Android spell checker service. "FUTO" should not be translated. -->
+     <string name="spell_checker_service_name">FUTO Spell Checker [Dev Build]</string>

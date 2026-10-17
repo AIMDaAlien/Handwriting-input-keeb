@@ -1,3 +1,4 @@
 [submodule "upstream"]
 	path = upstream
 	url = https://github.com/futo-org/android-keyboard.git
+	ignore = dirty

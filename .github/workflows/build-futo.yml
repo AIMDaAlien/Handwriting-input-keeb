@@ -64,6 +64,9 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      - name: Apply handwriting patches to upstream
+        run: bash scripts/apply-patches.sh
+
       - name: Build
         working-directory: upstream
         run: ./gradlew --no-daemon --stacktrace assembleUnstableDebug
