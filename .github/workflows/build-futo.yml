@@ -82,4 +82,4 @@ jobs:
         with:
           name: futo-handwriting-unstable-debug-apk
           path: ${{ env.APK }}
-          retention-days: 14
+          retention-days: 3
